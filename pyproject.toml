@@ -28,3 +28,4 @@ include = ["src*", "gui*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-p no:operator"
