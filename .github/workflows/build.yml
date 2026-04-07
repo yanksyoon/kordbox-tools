@@ -76,11 +76,14 @@ jobs:
           --noconfirm
           gui/app.py
 
-      - name: Create DMG
+      - name: Create DMG installer
         run: |
-          ln -sf /Applications dist/CDJAudioToolkit.app/
+          # Standard macOS: .dmg with .app + Applications symlink
+          mkdir -p dmg_root
+          cp -R dist/CDJAudioToolkit.app dmg_root/
+          ln -sf /Applications dmg_root/Applications
           hdiutil create -volname "CDJAudioToolkit" \
-            -srcfolder dist/CDJAudioToolkit.app \
+            -srcfolder dmg_root \
             -ov -format UDZO \
             dist/CDJAudioToolkit-macos-arm64.dmg
 
@@ -134,11 +137,13 @@ jobs:
           --noconfirm
           gui/app.py
 
-      - name: Create DMG
+      - name: Create DMG installer
         run: |
-          ln -sf /Applications dist/CDJAudioToolkit.app/
+          mkdir -p dmg_root
+          cp -R dist/CDJAudioToolkit.app dmg_root/
+          ln -sf /Applications dmg_root/Applications
           hdiutil create -volname "CDJAudioToolkit" \
-            -srcfolder dist/CDJAudioToolkit.app \
+            -srcfolder dmg_root \
             -ov -format UDZO \
             dist/CDJAudioToolkit-macos-x86_64.dmg
 
@@ -148,7 +153,7 @@ jobs:
           name: CDJAudioToolkit-macos-x86_64
           path: dist/CDJAudioToolkit-macos-x86_64.dmg
 
-  # ─── Windows (x86_64) ─────────────────────────────────────────────────────
+  # ─── Windows (x86_64) — NSIS Installer ────────────────────────────────────
   build-windows:
     needs: test
     runs-on: windows-latest
@@ -194,19 +199,56 @@ jobs:
           --noconfirm
           gui\app.py
 
-      - name: Create ZIP archive
-        run: >
-          Compress-Archive
-          -Path dist\CDJAudioToolkit\*
-          -DestinationPath dist\CDJAudioToolkit-windows-x86_64.zip
+      - name: Create NSIS installer
+        run: |
+          # Install NSIS
+          choco install nsis --yes
+
+          # Write NSIS script
+          @"
+          !include "MUI2.nsh"
+          !define APP_NAME "CDJAudioToolkit"
+          !define APP_VERSION "0.1.0"
+          !define APP_PUBLISHER "CDJ Audio Toolkit Contributors"
+          !define APP_EXE "CDJAudioToolkit.exe"
+          !define INSTALL_DIR "`$PROGRAM64\`${APP_NAME}"
+
+          Name "${APP_NAME}"
+          OutFile "dist\${APP_NAME}-windows-x86_64.exe"
+          InstallDir "${INSTALL_DIR}"
+          RequestExecutionLevel admin
+
+          !insertmacro MUI_PAGE_DIRECTORY
+          !insertmacro MUI_PAGE_INSTFILES
+          !insertmacro MUI_LANGUAGE "English"
+
+          Section "Install"
+            SetOutPath "${INSTALL_DIR}"
+            File /r "dist\${APP_NAME}\*.*"
+            CreateShortCut "`$DESKTOP\${APP_NAME}.lnk" "${INSTALL_DIR}\${APP_EXE}"
+            CreateDirectory "`$SMPROGRAMS\${APP_NAME}"
+            CreateShortCut "`$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "${INSTALL_DIR}\${APP_EXE}"
+            CreateShortCut "`$SMPROGRAMS\${APP_NAME}\Uninstall.lnk" "${INSTALL_DIR}\uninstall.exe"
+            WriteUninstaller "${INSTALL_DIR}\uninstall.exe"
+          SectionEnd
+
+          Section "Uninstall"
+            RMDir /r "${INSTALL_DIR}"
+            Delete "`$DESKTOP\${APP_NAME}.lnk"
+            RMDir /r "`$SMPROGRAMS\${APP_NAME}"
+          SectionEnd
+          "@ | Out-File -FilePath installer.nsi -Encoding UTF8
+
+          # Build installer
+          makensis installer.nsi
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: CDJAudioToolkit-windows-x86_64
-          path: dist/CDJAudioToolkit-windows-x86_64.zip
+          path: dist/CDJAudioToolkit-windows-x86_64.exe
 
-  # ─── Linux (x86_64) ───────────────────────────────────────────────────────
+  # ─── Linux (x86_64) — .deb package ────────────────────────────────────────
   build-linux:
     needs: test
     runs-on: ubuntu-22.04
@@ -219,7 +261,7 @@ jobs:
           python-version: "3.10"
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg dpkg-dev
 
       - name: Bundle ffmpeg
         run: python build/bundle_ffmpeg.py --from-system
@@ -250,14 +292,65 @@ jobs:
           --noconfirm
           gui/app.py
 
-      - name: Create tar.gz archive
-        run: tar czf dist/cdj-audio-toolkit-linux-x86_64.tar.gz -C dist cdj-audio-toolkit
+      - name: Create .deb package
+        run: |
+          APP_NAME="cdj-audio-toolkit"
+          APP_VERSION="0.1.0"
+          ARCH="amd64"
+          PKG_NAME="${APP_NAME}_${APP_VERSION}_${ARCH}.deb"
+
+          # Create .deb directory structure
+          DEB_DIR="deb_root"
+          INSTALL_DIR="${DEB_DIR}/opt/CDJAudioToolkit"
+          mkdir -p "${INSTALL_DIR}"
+          mkdir -p "${DEB_DIR}/usr/bin"
+          mkdir -p "${DEB_DIR}/usr/share/applications"
+          mkdir -p "${DEB_DIR}/DEBIAN"
+
+          # Copy built application
+          cp -r dist/cdj-audio-toolkit/* "${INSTALL_DIR}/"
+
+          # Create launcher script
+          cat > "${DEB_DIR}/usr/bin/cdj-audio-toolkit" << 'LAUNCHER'
+          #!/bin/sh
+          exec /opt/CDJAudioToolkit/cdj-audio-toolkit "$@"
+          LAUNCHER
+          chmod 755 "${DEB_DIR}/usr/bin/cdj-audio-toolkit"
+
+          # Create .desktop file
+          cat > "${DEB_DIR}/usr/share/applications/cdj-audio-toolkit.desktop" << 'DESKTOP'
+          [Desktop Entry]
+          Name=CDJ Audio Toolkit
+          Comment=Check compatibility, backup playlists, convert audio for Pioneer CDJ
+          Exec=/opt/CDJAudioToolkit/cdj-audio-toolkit
+          Icon=cdj-audio-toolkit
+          Terminal=false
+          Type=Application
+          Categories=Audio;Music;AudioVideo;
+          DESKTOP
+
+          # Create control file
+          cat > "${DEB_DIR}/DEBIAN/control" << CONTROL
+          Package: ${APP_NAME}
+          Version: ${APP_VERSION}
+          Section: sound
+          Priority: optional
+          Architecture: ${ARCH}
+          Depends: libgl1, libxkbcommon0
+          Maintainer: CDJ Audio Toolkit Contributors
+          Description: CDJ Audio Toolkit for Pioneer CDJ players
+           Check audio file compatibility with CDJ models, backup playlist
+           tracks, and convert audio to optimal CDJ formats.
+          CONTROL
+
+          # Build .deb
+          dpkg-deb --build "${DEB_DIR}" "dist/${PKG_NAME}"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: CDJAudioToolkit-linux-x86_64
-          path: dist/cdj-audio-toolkit-linux-x86_64.tar.gz
+          path: dist/cdj-audio-toolkit_0.1.0_amd64.deb
 
   # ─── Create GitHub Release (on tag) ────────────────────────────────────────
   release:
@@ -282,8 +375,8 @@ jobs:
         with:
           files: |
             artifacts/**/*.dmg
-            artifacts/**/*.zip
-            artifacts/**/*.tar.gz
+            artifacts/**/*.exe
+            artifacts/**/*.deb
           generate_release_notes: true
           draft: true
         env:
