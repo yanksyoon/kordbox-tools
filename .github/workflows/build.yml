@@ -90,6 +90,64 @@ jobs:
           name: CDJAudioToolkit-macos-arm64
           path: dist/CDJAudioToolkit-macos-arm64.dmg
 
+  # ─── macOS (x86_64 / Intel) ────────────────────────────────────────────────
+  build-macos-x86_64:
+    needs: test
+    runs-on: macos-12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install ffmpeg
+        run: brew install ffmpeg
+
+      - name: Bundle ffmpeg
+        run: python build/bundle_ffmpeg.py --from-system
+
+      - name: Install dependencies
+        run: pip install -e ".[dev,gui-test]"
+
+      - name: Build with PyInstaller
+        run: >
+          pyinstaller
+          --onedir --windowed
+          --name "CDJAudioToolkit"
+          --add-data "ffmpeg/darwin:ffmpeg/darwin"
+          --hidden-import src
+          --hidden-import src.cli
+          --hidden-import src.config
+          --hidden-import src.compatibility
+          --hidden-import src.backup
+          --hidden-import src.converter
+          --hidden-import src.metadata
+          --hidden-import src.utils
+          --hidden-import gui
+          --hidden-import gui.theme
+          --hidden-import gui.app
+          --hidden-import gui.tabs.check_tab
+          --hidden-import gui.tabs.backup_tab
+          --hidden-import gui.tabs.convert_tab
+          --noconfirm
+          gui/app.py
+
+      - name: Create DMG
+        run: |
+          ln -sf /Applications dist/CDJAudioToolkit.app/
+          hdiutil create -volname "CDJAudioToolkit" \
+            -srcfolder dist/CDJAudioToolkit.app \
+            -ov -format UDZO \
+            dist/CDJAudioToolkit-macos-x86_64.dmg
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CDJAudioToolkit-macos-x86_64
+          path: dist/CDJAudioToolkit-macos-x86_64.dmg
+
   # ─── Windows (x86_64) ─────────────────────────────────────────────────────
   build-windows:
     needs: test
@@ -203,7 +261,7 @@ jobs:
 
   # ─── Create GitHub Release (on tag) ────────────────────────────────────────
   release:
-    needs: [build-macos-arm64, build-windows, build-linux]
+    needs: [build-macos-arm64, build-macos-x86_64, build-windows, build-linux]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
     permissions:
