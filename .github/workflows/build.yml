@@ -50,8 +50,7 @@ jobs:
         run: python build/bundle_ffmpeg.py --from-system
 
       - name: Install dependencies
-        run: |
-          pip install -e ".[dev]"
+        run: pip install -e ".[dev,gui-test]"
 
       - name: Build with PyInstaller
         run: >
@@ -94,7 +93,7 @@ jobs:
         run: python build/bundle_ffmpeg.py --from-system
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev,gui-test]"
 
       - name: Build with PyInstaller
         run: >
@@ -139,7 +138,7 @@ jobs:
         run: python build/bundle_ffmpeg.py --from-system
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev,gui-test]"
 
       - name: Build with PyInstaller
         run: >
@@ -180,7 +179,7 @@ jobs:
         run: python build/bundle_ffmpeg.py --from-system
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev,gui-test]"
 
       - name: Build with PyInstaller
         run: >
