@@ -7,6 +7,13 @@ Usage:
     python build/bundle_ffmpeg.py [--platform darwin|win32|linux] [--all]
 """
 
+# Ensure UTF-8 output on Windows (cp1252 default can't encode ✓ → etc.)
+import io
+import sys
+if sys.platform == "win32":
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8")
+
 from __future__ import annotations
 
 import argparse
@@ -14,7 +21,6 @@ import os
 import platform as _platform
 import shutil
 import subprocess
-import sys
 import tempfile
 import zipfile
 from pathlib import Path
