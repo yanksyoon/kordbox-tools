@@ -1,4 +1,20 @@
-
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# PyInstaller output
+dist/
+CDJAudioToolkit/
+cdj-audio-toolkit/
+*.dmg
+*.app/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# User data
+backup/
+output/
+music/
+playlists/
