@@ -356,11 +356,11 @@ jobs:
           name: CDJAudioToolkit-linux-x86_64
           path: dist/cdj-audio-toolkit_0.1.0_amd64.deb
 
-  # ─── Create GitHub Release (on tag) ────────────────────────────────────────
+  # ─── Create GitHub Release ─────────────────────────────────────────────────
   release:
     needs: [build-macos-arm64, build-macos-x86_64, build-windows, build-linux]
     runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: write
     steps:
@@ -374,14 +374,31 @@ jobs:
       - name: List artifacts
         run: find artifacts/ -type f
 
-      - name: Create Release
+      - name: Create or update Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: latest
+          name: Latest Build
+          body: |
+            Automatically built from the latest `main` branch.
+
+            | Platform | Installer |
+            |----------|-----------|
+            | macOS (Apple Silicon) | `CDJAudioToolkit-macos-arm64.dmg` |
+            | macOS (Intel) | `CDJAudioToolkit-macos-x86_64.dmg` |
+            | Windows | `CDJAudioToolkit-windows-x86_64.exe` |
+            | Linux | `cdj-audio-toolkit_0.1.0_amd64.deb` |
+
+            > **Installation:**
+            > - **macOS:** Open `.dmg`, drag `CDJAudioToolkit.app` to Applications
+            > - **Windows:** Run `.exe` installer
+            > - **Linux:** `sudo dpkg -i cdj-audio-toolkit_*.deb`
           files: |
             artifacts/**/*.dmg
             artifacts/**/*.exe
             artifacts/**/*.deb
-          generate_release_notes: true
-          draft: true
+          draft: false
+          prerelease: false
+          make_latest: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
