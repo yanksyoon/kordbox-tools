@@ -9,6 +9,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: 1
+  PYTHONUNBUFFERED: 1
+
 jobs:
   # ─── Run tests first ───────────────────────────────────────────────────────
   test:
@@ -20,12 +24,9 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-          cache: "pip"
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
+        run: pip install -e ".[dev]"
 
       - name: Run tests
         run: pytest tests/ -v
@@ -34,9 +35,6 @@ jobs:
   build-macos-arm64:
     needs: test
     runs-on: macos-14  # Apple Silicon runner
-    strategy:
-      matrix:
-        arch: [arm64]
     steps:
       - uses: actions/checkout@v4
 
@@ -44,32 +42,27 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-          cache: "pip"
 
-      - name: Install ffmpeg (bundling target)
+      - name: Install ffmpeg
         run: brew install ffmpeg
 
-      - name: Bundle ffmpeg from system PATH
+      - name: Bundle ffmpeg
         run: python build/bundle_ffmpeg.py --from-system
 
       - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
           pip install -e ".[dev]"
-          pip install pyinstaller
 
       - name: Build with PyInstaller
-        run: |
-          pyinstaller build/build.spec \
-            --onedir \
-            --windowed \
-            --name "CDJAudioToolkit" \
-            --add-data "ffmpeg/darwin:ffmpeg/darwin" \
-            --noconfirm
+        run: >
+          pyinstaller build/build.spec
+          --onedir --windowed
+          --name "CDJAudioToolkit"
+          --add-data "ffmpeg/darwin:ffmpeg/darwin"
+          --noconfirm
 
       - name: Create DMG
         run: |
-          # Create a symlink inside the .app for easy access
           ln -sf /Applications dist/CDJAudioToolkit.app/
           hdiutil create -volname "CDJAudioToolkit" \
             -srcfolder dist/CDJAudioToolkit.app \
@@ -86,9 +79,6 @@ jobs:
   build-macos-x86_64:
     needs: test
     runs-on: macos-13  # Intel runner
-    strategy:
-      matrix:
-        arch: [x86_64]
     steps:
       - uses: actions/checkout@v4
 
@@ -96,28 +86,23 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-          cache: "pip"
 
-      - name: Install ffmpeg (bundling target)
+      - name: Install ffmpeg
         run: brew install ffmpeg
 
-      - name: Bundle ffmpeg from system PATH
+      - name: Bundle ffmpeg
         run: python build/bundle_ffmpeg.py --from-system
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-          pip install pyinstaller
+        run: pip install -e ".[dev]"
 
       - name: Build with PyInstaller
-        run: |
-          pyinstaller build/build.spec \
-            --onedir \
-            --windowed \
-            --name "CDJAudioToolkit" \
-            --add-data "ffmpeg/darwin:ffmpeg/darwin" \
-            --noconfirm
+        run: >
+          pyinstaller build/build.spec
+          --onedir --windowed
+          --name "CDJAudioToolkit"
+          --add-data "ffmpeg/darwin:ffmpeg/darwin"
+          --noconfirm
 
       - name: Create DMG
         run: |
@@ -144,40 +129,31 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-          cache: "pip"
 
-      - name: Install ffmpeg via winget
+      - name: Install ffmpeg
         run: |
-          winget install --id Gyan.FFmpeg --accept-source-agreements --accept-package-agreements
-          $env:PATH = "C:\ProgramData\chocolatey\bin;$env:PATH"
+          choco install ffmpeg --yes
+          Write-Output "FFmpeg installed at: $(Get-Command ffmpeg | Select-Object -ExpandProperty Source)"
 
-      - name: Refresh PATH
-        uses: actions/github-script@v7
-        with:
-          script: |
-            core.exportVariable('PATH', process.env.PATH)
-
-      - name: Bundle ffmpeg from system PATH
+      - name: Bundle ffmpeg
         run: python build/bundle_ffmpeg.py --from-system
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-          pip install pyinstaller
+        run: pip install -e ".[dev]"
 
       - name: Build with PyInstaller
         run: >
           pyinstaller build/build.spec
-          --onedir
-          --windowed
+          --onedir --windowed
           --name "CDJAudioToolkit"
-          --add-data "ffmpeg/win32;ffmpeg/win32"
+          --add-data "ffmpeg\win32;ffmpeg\win32"
           --noconfirm
 
       - name: Create ZIP archive
-        run: |
-          Compress-Archive -Path dist/CDJAudioToolkit/* -DestinationPath dist/CDJAudioToolkit-windows-x86_64.zip
+        run: >
+          Compress-Archive
+          -Path dist\CDJAudioToolkit\*
+          -DestinationPath dist\CDJAudioToolkit-windows-x86_64.zip
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -196,73 +172,32 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
-          cache: "pip"
 
       - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg libfuse2
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Bundle ffmpeg from system PATH
+      - name: Bundle ffmpeg
         run: python build/bundle_ffmpeg.py --from-system
 
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -e ".[dev]"
-          pip install pyinstaller
+        run: pip install -e ".[dev]"
 
       - name: Build with PyInstaller
-        run: |
-          pyinstaller build/build.spec \
-            --onedir \
-            --name "cdj-audio-toolkit" \
-            --add-data "ffmpeg/linux:ffmpeg/linux" \
-            --noconfirm
+        run: >
+          pyinstaller build/build.spec
+          --onedir
+          --name "cdj-audio-toolkit"
+          --add-data "ffmpeg/linux:ffmpeg/linux"
+          --noconfirm
 
-      - name: Create AppImage
-        run: |
-          # Download linuxdeploy and AppImage plugin for PyInstaller
-          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-          chmod +x linuxdeploy-x86_64.AppImage
-
-          # Create desktop entry
-          mkdir -p appdir/usr/share/applications
-          cat > appdir/usr/share/applications/cdj-audio-toolkit.desktop << 'EOF'
-          [Desktop Entry]
-          Name=CDJ Audio Toolkit
-          Exec=cdj-audio-toolkit
-          Icon=cdj-audio-toolkit
-          Type=Application
-          Categories=Audio;Music;
-          EOF
-
-          # Create AppDir structure
-          cp -r dist/cdj-audio-toolkit/* appdir/usr/
-          cp dist/cdj-audio-toolkit/cdj-audio-toolkit appdir/AppRun
-
-          # Build AppImage
-          ./linuxdeploy-x86_64.AppImage \
-            --appdir appdir \
-            --output appimage \
-            --desktop-file=appdir/usr/share/applications/cdj-audio-toolkit.desktop \
-            --icon-file=appdir/usr/share/icons/hicolor/256x256/apps/cdj-audio-toolkit.png \
-            || true  # Icon may be missing, continue anyway
-
-          # Fallback: just tar.gz if AppImage fails
-          if [ ! -f *.AppImage ]; then
-            tar czf dist/cdj-audio-toolkit-linux-x86_64.tar.gz -C dist cdj-audio-toolkit
-          else
-            mv *.AppImage dist/cdj-audio-toolkit-linux-x86_64.AppImage
-          fi
+      - name: Create tar.gz archive
+        run: tar czf dist/cdj-audio-toolkit-linux-x86_64.tar.gz -C dist cdj-audio-toolkit
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: CDJAudioToolkit-linux-x86_64
-          path: |
-            dist/cdj-audio-toolkit-linux-x86_64.AppImage
-            dist/cdj-audio-toolkit-linux-x86_64.tar.gz
+          path: dist/cdj-audio-toolkit-linux-x86_64.tar.gz
 
   # ─── Create GitHub Release (on tag) ────────────────────────────────────────
   release:
@@ -288,7 +223,6 @@ jobs:
           files: |
             artifacts/**/*.dmg
             artifacts/**/*.zip
-            artifacts/**/*.AppImage
             artifacts/**/*.tar.gz
           generate_release_notes: true
           draft: true
