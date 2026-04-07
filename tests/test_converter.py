@@ -138,27 +138,31 @@ class TestNeedsConversion:
 
 
 class TestBuildFfmpegCmd:
-    def test_wav_16bit(self):
+    @patch("src.converter.find_ffmpeg", return_value=Path("/usr/bin/ffmpeg"))
+    def test_wav_16bit(self, mock_ffmpeg):
         target = ConversionTarget(format="wav", sample_rate=44100, bit_depth=16)
         cmd = build_ffmpeg_cmd("/in.wav", "/out.wav", target)
-        assert cmd[0].endswith("ffmpeg")
+        assert cmd[0] == "/usr/bin/ffmpeg"
         assert "-codec:a" in cmd
         assert "pcm_s16le" in cmd
         assert "-y" in cmd
 
-    def test_mp3_320k(self):
+    @patch("src.converter.find_ffmpeg", return_value=Path("/usr/bin/ffmpeg"))
+    def test_mp3_320k(self, mock_ffmpeg):
         target = ConversionTarget(format="mp3", bitrate="320k", sample_rate=44100)
         cmd = build_ffmpeg_cmd("/in.wav", "/out.mp3", target)
         assert "libmp3lame" in cmd
         assert "320k" in cmd
 
-    def test_flac_24bit(self):
+    @patch("src.converter.find_ffmpeg", return_value=Path("/usr/bin/ffmpeg"))
+    def test_flac_24bit(self, mock_ffmpeg):
         target = ConversionTarget(format="flac", sample_rate=96000, bit_depth=24)
         cmd = build_ffmpeg_cmd("/in.wav", "/out.flac", target)
         assert "flac" in cmd
         assert "s24" in cmd
 
-    def test_aiff(self):
+    @patch("src.converter.find_ffmpeg", return_value=Path("/usr/bin/ffmpeg"))
+    def test_aiff(self, mock_ffmpeg):
         target = ConversionTarget(format="aiff", sample_rate=44100, bit_depth=16)
         cmd = build_ffmpeg_cmd("/in.wav", "/out.aiff", target)
         assert "pcm_s16be" in cmd
