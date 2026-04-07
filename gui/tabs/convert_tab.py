@@ -33,7 +33,7 @@ from src.converter import (
     scan_audio_files,
 )
 from src.backup import parse_playlist, resolve_tracks
-from src.utils import format_size, normalise_model_name, get_display_model_name
+from src.utils import format_size
 from gui.components import (
     DirSelector,
     FileListWidget,
