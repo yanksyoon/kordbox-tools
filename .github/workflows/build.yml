@@ -93,7 +93,7 @@ jobs:
   # ─── macOS (x86_64 / Intel) ────────────────────────────────────────────────
   build-macos-x86_64:
     needs: test
-    runs-on: macos-12
+    runs-on: macos-15-intel
     steps:
       - uses: actions/checkout@v4
 
