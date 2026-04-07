@@ -215,7 +215,7 @@ jobs:
           !define INSTALL_DIR "`$PROGRAM64\`${APP_NAME}"
 
           Name "${APP_NAME}"
-          OutFile "dist\${APP_NAME}-windows-x86_64.exe"
+          OutFile "CDJAudioToolkit-windows-x86_64.exe"
           InstallDir "${INSTALL_DIR}"
           RequestExecutionLevel admin
 
@@ -242,6 +242,9 @@ jobs:
 
           # Build installer
           makensis installer.nsi
+
+          # Move to dist
+          Move-Item "CDJAudioToolkit-windows-x86_64.exe" "dist\"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
