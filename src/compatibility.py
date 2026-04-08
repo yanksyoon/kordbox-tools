@@ -178,7 +178,7 @@ def _check_metadata_specs(
                 warnings.append(f"Bit depth {metadata.bit_depth}-bit may not be optimal")
 
     # Bitrate for lossy formats
-    if metadata.format == "mp3" and metadata.bitrate > 0:
+    if metadata.format in {"mp3", "aac"} and metadata.bitrate > 0:
         bitrate_kbps = metadata.bitrate // 1000
         if bitrate_kbps > specs.max_bitrate:
             warnings.append(
