@@ -1,2 +1,0 @@
-[console_scripts]
-cdj-tool = src.cli:main

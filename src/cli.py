@@ -80,6 +80,10 @@ def main() -> None:
     p_convert.add_argument("--music-dir", default="./music", help="Music dir when processing playlists")
     p_convert.add_argument("--skip-compatible", action="store_true", help="Skip already-compatible files")
     p_convert.add_argument("--overwrite", action="store_true", help="Overwrite existing output")
+    p_convert.add_argument("--prefer-lossless", action="store_true",
+                           help="Avoid lossy encoding: if the target format is lossy (mp3, aac, m4a), "
+                                "override to FLAC instead.  Prevents generational quality loss without "
+                                "claiming to restore quality from already-lossy sources.")
     p_convert.add_argument("--dry-run", action="store_true", help="Show what would be converted")
     p_convert.add_argument("--json", action="store_true", help="Output results as JSON")
 
@@ -237,6 +241,8 @@ def _cmd_convert(args) -> None:
             print(f" {target.bit_depth}-bit", end="")
         if target.bitrate:
             print(f" {target.bitrate}", end="")
+        if args.prefer_lossless:
+            print(" [prefer-lossless: lossy targets overridden to FLAC]", end="")
         print()
         for f in files:
             print(f"  {f}")
@@ -248,6 +254,7 @@ def _cmd_convert(args) -> None:
         target=target,
         skip_compatible=args.skip_compatible,
         overwrite=args.overwrite,
+        prefer_lossless=args.prefer_lossless,
         on_progress=lambda i, total, name: print(f"  [{i+1}/{total}] {name}"),
     )
 

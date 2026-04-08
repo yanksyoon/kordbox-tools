@@ -37,6 +37,12 @@ A cross-platform desktop application for Pioneer CDJ workflow management — che
   - **Match reference file** — clone the format of a file you already like
   - **Preset** — Club Standard (WAV 44.1 kHz/16-bit), High Quality (MP3 320 kbps), Hi-Res (FLAC 96 kHz/24-bit)
   - **Custom** — pick format, sample rate, bit depth, bitrate manually
+- **`--prefer-lossless`** — avoid lossy encoding whenever possible:
+  - If the selected target format is lossy (MP3, AAC, M4A), the output is automatically overridden to **FLAC**, which is lossless and natively supported on modern CDJ models (CDJ-2000NXS2, CDJ-3000).
+  - Source sample rate and bit depth are preserved so no information is discarded beyond what was already lost in the original encode.
+  - For lossy source files (e.g. MP3 → FLAC), converting to FLAC **cannot restore** quality that was already discarded, but it **prevents further degradation** from an additional lossy encode.
+  - When reducing bit depth to 16-bit (WAV/AIFF), triangular dithering is applied automatically to minimise quantisation noise.
+  - Lossless targets (WAV, AIFF, FLAC) are never changed by this flag — it only affects lossy targets.
 - Skip already-compatible files, dry-run mode, real-time progress tracking
 
 ---
@@ -193,6 +199,11 @@ cdj-tool convert myset.m3u8 --preset club --music-dir ./music
 
 # Convert an entire directory
 cdj-tool convert ./music --format flac --sample-rate 96000 --bit-depth 24
+
+# Prefer lossless output — avoids lossy encoding even if the preset/target is lossy
+# (e.g. --preset high_quality would normally produce MP3; with this flag it
+# produces FLAC instead, preventing generational quality loss)
+cdj-tool convert ./music --preset high_quality --prefer-lossless
 
 # Dry run — see what would be converted
 cdj-tool convert ./music --model cdj-3000 --dry-run

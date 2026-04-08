@@ -57,6 +57,7 @@ class _ConvertWorker(QThread):
         target: ConversionTarget,
         skip_compatible: bool,
         overwrite: bool,
+        prefer_lossless: bool = False,
     ):
         super().__init__()
         self.files = files
@@ -64,6 +65,7 @@ class _ConvertWorker(QThread):
         self.target = target
         self.skip_compatible = skip_compatible
         self.overwrite = overwrite
+        self.prefer_lossless = prefer_lossless
 
     def run(self):
         report = convert_batch(
@@ -72,6 +74,7 @@ class _ConvertWorker(QThread):
             target=self.target,
             skip_compatible=self.skip_compatible,
             overwrite=self.overwrite,
+            prefer_lossless=self.prefer_lossless,
             on_progress=lambda i, total, name: self.progress.emit(i, total, name),
         )
         self.finished.emit(report)
@@ -178,9 +181,17 @@ class ConvertTab(QWidget):
         self.chk_skip.setChecked(True)
         self.chk_overwrite = QCheckBox("Overwrite existing")
         self.chk_dryrun = QCheckBox("Dry run")
+        self.chk_prefer_lossless = QCheckBox("Prefer lossless")
+        self.chk_prefer_lossless.setToolTip(
+            "Avoid lossy encoding: if the selected target format is lossy (MP3, AAC, M4A), "
+            "automatically convert to FLAC instead.\n"
+            "Note: converting a lossy source to FLAC cannot restore lost quality, "
+            "but prevents further degradation."
+        )
         opts.addWidget(self.chk_skip)
         opts.addWidget(self.chk_overwrite)
         opts.addWidget(self.chk_dryrun)
+        opts.addWidget(self.chk_prefer_lossless)
         opts.addStretch()
         layout.addLayout(opts)
 
@@ -244,6 +255,10 @@ class ConvertTab(QWidget):
             self.log.append_info(f"Dry run — would convert {len(files)} file(s)")
             self.log.append_info(f"  Target: {target.format} {target.sample_rate or ''}Hz "
                                  f"{target.bit_depth or ''}-bit {target.bitrate or ''}")
+            if self.chk_prefer_lossless.isChecked():
+                self.log.append_info(
+                    "  [prefer-lossless enabled: lossy targets will be overridden to FLAC]"
+                )
             for f in files:
                 self.log.append_info(f"  {f}")
             return
@@ -259,6 +274,7 @@ class ConvertTab(QWidget):
             target=target,
             skip_compatible=self.chk_skip.isChecked(),
             overwrite=self.chk_overwrite.isChecked(),
+            prefer_lossless=self.chk_prefer_lossless.isChecked(),
         )
         self._worker.progress.connect(self._on_progress)
         self._worker.finished.connect(self._on_finished)

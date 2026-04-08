@@ -35,6 +35,12 @@ class ConversionTarget:
     bitrate: Optional[str] = None        # e.g. "320k" for MP3/AAC
 
 
+# Formats that are inherently lossy (discard audio information on encode)
+LOSSY_FORMATS: frozenset[str] = frozenset({"mp3", "aac", "m4a"})
+# Formats that are lossless (bit-perfect round-trip)
+LOSSLESS_FORMATS: frozenset[str] = frozenset({"wav", "aiff", "flac"})
+
+
 @dataclass
 class ConversionResult:
     """Result of converting a single file."""
@@ -112,6 +118,54 @@ def target_from_preset(name: str) -> ConversionTarget:
 
 # ─── Conversion logic ─────────────────────────────────────────────────────────
 
+def resolve_prefer_lossless_target(
+    source: AudioMetadata,
+    target: ConversionTarget,
+) -> ConversionTarget:
+    """
+    Override a lossy target with a lossless equivalent when prefer_lossless is enabled.
+
+    Policy:
+    - If the target is already lossless (wav, aiff, flac), return it unchanged.
+    - If the target is lossy (mp3, aac, m4a), override to FLAC, preserving
+      the source sample rate and bit depth.  This avoids lossy encoding
+      regardless of whether the source itself is lossy or lossless:
+      converting a lossy source to FLAC cannot restore quality, but it does
+      prevent *further* quality loss from an additional lossy encode.
+
+    Note: FLAC is preferred over WAV/AIFF because it is lossless yet
+    produces significantly smaller files, while still being natively
+    supported by modern Pioneer CDJ models (CDJ-2000NXS2, CDJ-3000).
+
+    Parameters
+    ----------
+    source : AudioMetadata
+        Metadata of the source file (used to preserve sample rate / bit depth).
+    target : ConversionTarget
+        Requested conversion target.
+
+    Returns
+    -------
+    ConversionTarget
+        The (possibly overridden) target.
+    """
+    if target.format.lower() not in LOSSY_FORMATS:
+        # Target is already lossless — nothing to override.
+        return target
+
+    # Preserve source sample rate and bit depth where known.
+    # For lossy sources (e.g. MP3), bit_depth is typically None; fall back to
+    # 16-bit which is sufficient for that quality level.
+    sr = source.sample_rate or target.sample_rate
+    bd = source.bit_depth or 16
+
+    return ConversionTarget(
+        format="flac",
+        sample_rate=sr,
+        bit_depth=bd,
+        bitrate=None,
+    )
+
 def needs_conversion(source: AudioMetadata, target: ConversionTarget) -> bool:
     """Check whether the source file already matches the target specs."""
     src_ext = source.format
@@ -145,6 +199,7 @@ def convert_file(
     output_dir: str,
     target: ConversionTarget,
     overwrite: bool = False,
+    prefer_lossless: bool = False,
     on_progress: Optional[Callable[[float, str], None]] = None,
 ) -> ConversionResult:
     """
@@ -160,6 +215,11 @@ def convert_file(
         Desired output format and settings.
     overwrite : bool
         Overwrite existing output file.
+    prefer_lossless : bool
+        When True, avoid lossy encoding whenever possible.  If the requested
+        target is a lossy format (mp3, aac, m4a), the target is automatically
+        overridden to FLAC so that no additional quality is sacrificed.
+        Has no effect when the target is already a lossless format.
     on_progress : callable(progress_0_to_1, message) | None
         Progress callback.
     """
@@ -177,6 +237,8 @@ def convert_file(
     meta = extract_metadata(input_path)
     if meta:
         result.input_size = meta.file_size
+        if prefer_lossless:
+            target = resolve_prefer_lossless_target(meta, target)
         if not needs_conversion(meta, target):
             result.skipped = True
             result.skipped_reason = "Already compatible with target format"
@@ -220,6 +282,7 @@ def convert_batch(
     target: ConversionTarget,
     skip_compatible: bool = True,
     overwrite: bool = False,
+    prefer_lossless: bool = False,
     on_progress: Optional[Callable[[int, int, str], None]] = None,
 ) -> ConversionReport:
     """
@@ -237,6 +300,8 @@ def convert_batch(
         Skip files already matching target.
     overwrite : bool
         Overwrite existing output.
+    prefer_lossless : bool
+        When True, avoid lossy encoding whenever possible (see convert_file).
     on_progress : callable(current, total, filename) | None
     """
     report = ConversionReport(output_dir=output_dir, total=len(input_files))
@@ -247,7 +312,7 @@ def convert_batch(
         if on_progress:
             on_progress(i, report.total, name)
 
-        result = convert_file(filepath, output_dir, target, overwrite)
+        result = convert_file(filepath, output_dir, target, overwrite, prefer_lossless)
         report.results.append(result)
 
         if result.skipped:
@@ -266,8 +331,24 @@ def build_ffmpeg_cmd(
     input_path: str,
     output_path: str,
     target: ConversionTarget,
+    dither: bool = False,
 ) -> list[str]:
-    """Build an ffmpeg command list for the given target."""
+    """Build an ffmpeg command list for the given target.
+
+    Parameters
+    ----------
+    input_path : str
+        Source file path.
+    output_path : str
+        Destination file path.
+    target : ConversionTarget
+        Output format and encoding settings.
+    dither : bool
+        When True and the output format is WAV or AIFF at 16-bit, apply
+        triangular dithering via the ``aresample`` filter.  Dithering
+        minimises quantisation noise when reducing from a higher bit depth
+        (e.g. 24-bit source → 16-bit output).
+    """
     ffmpeg = str(find_ffmpeg())
     cmd = [ffmpeg, "-i", input_path]
 
@@ -284,11 +365,15 @@ def build_ffmpeg_cmd(
         cmd.extend(["-codec:a", f"pcm_s{bd}le"])
         if target.sample_rate:
             cmd.extend(["-ar", str(target.sample_rate)])
+        if dither and bd == 16:
+            cmd.extend(["-af", "aresample=resampler=swr:dither_method=triangular_hp"])
     elif fmt == "aiff":
         bd = target.bit_depth or 16
         cmd.extend(["-codec:a", f"pcm_s{bd}be"])
         if target.sample_rate:
             cmd.extend(["-ar", str(target.sample_rate)])
+        if dither and bd == 16:
+            cmd.extend(["-af", "aresample=resampler=swr:dither_method=triangular_hp"])
     elif fmt == "flac":
         cmd.extend(["-codec:a", "flac"])
         if target.sample_rate:
@@ -315,11 +400,20 @@ def _run_ffmpeg(
     on_progress: Optional[Callable[[float, str], None]] = None,
 ) -> None:
     """Execute ffmpeg with optional progress parsing."""
-    cmd = build_ffmpeg_cmd(input_path, output_path, target)
-
-    # Get duration for progress calculation
+    # Get duration for progress calculation; also use source metadata to decide
+    # whether to apply dithering (bit-depth reduction to 16-bit).
     meta = extract_metadata(input_path)
     duration = meta.duration if meta else 0
+
+    dither = (
+        target.format.lower() in ("wav", "aiff")
+        and (target.bit_depth or 16) == 16
+        and meta is not None
+        and meta.bit_depth is not None
+        and meta.bit_depth > 16
+    )
+
+    cmd = build_ffmpeg_cmd(input_path, output_path, target, dither=dither)
 
     process = subprocess.Popen(
         cmd,
