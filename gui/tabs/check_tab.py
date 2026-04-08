@@ -108,6 +108,7 @@ class CheckTab(QWidget):
         model_key = self.model_selector.selected_key()
         self._results.clear()
         self.table.clear()
+        self.table.setRowCount(0)
         self.log.clear_log()
 
         self._worker = _CheckWorker(files, model_key)
