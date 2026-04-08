@@ -410,7 +410,8 @@ class TestConvertFilePreferLossless:
         )
         # Confirm the ffmpeg command used FLAC codec (check Popen call args)
         call_args = mock_popen.call_args[0][0]  # first positional arg = cmd list
-        assert "flac" in call_args
+        codec_idx = call_args.index("-codec:a")
+        assert call_args[codec_idx + 1] == "flac"
 
     @patch("src.converter.extract_metadata")
     @patch("src.converter.find_ffmpeg")
@@ -437,10 +438,9 @@ class TestConvertFilePreferLossless:
             f"Expected .flac output, got: {result.output_path}"
         )
         call_args = mock_popen.call_args[0][0]
-        assert "flac" in call_args
-        # libmp3lame and aac codecs must NOT appear in the command
-        assert "libmp3lame" not in call_args
-        assert "aac" not in call_args
+        # The codec flag must be 'flac', not a lossy codec
+        codec_idx = call_args.index("-codec:a")
+        assert call_args[codec_idx + 1] == "flac"
 
     @patch("src.converter.extract_metadata")
     def test_flac_target_unchanged_with_prefer_lossless(self, mock_meta):

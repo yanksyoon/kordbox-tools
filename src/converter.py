@@ -366,14 +366,14 @@ def build_ffmpeg_cmd(
         if target.sample_rate:
             cmd.extend(["-ar", str(target.sample_rate)])
         if dither and bd == 16:
-            cmd.extend(["-af", "aresample=resampler=swr:dither_method=triangular_hp"])
+            _append_audio_filter(cmd, "aresample=resampler=swr:dither_method=triangular_hp")
     elif fmt == "aiff":
         bd = target.bit_depth or 16
         cmd.extend(["-codec:a", f"pcm_s{bd}be"])
         if target.sample_rate:
             cmd.extend(["-ar", str(target.sample_rate)])
         if dither and bd == 16:
-            cmd.extend(["-af", "aresample=resampler=swr:dither_method=triangular_hp"])
+            _append_audio_filter(cmd, "aresample=resampler=swr:dither_method=triangular_hp")
     elif fmt == "flac":
         cmd.extend(["-codec:a", "flac"])
         if target.sample_rate:
@@ -461,6 +461,21 @@ def _bitrate_to_bps(bitrate_str: str) -> Optional[int]:
         return int(bitrate_str)
     except ValueError:
         return None
+
+
+def _append_audio_filter(cmd: list[str], filter_expr: str) -> None:
+    """Add an audio filter to the ffmpeg command list.
+
+    If a ``-af`` flag already exists in *cmd*, the new *filter_expr* is
+    appended to the existing filter chain with a comma separator so that
+    multiple filters are applied in sequence.  Otherwise a new ``-af``
+    flag is added.
+    """
+    if "-af" in cmd:
+        idx = cmd.index("-af")
+        cmd[idx + 1] = cmd[idx + 1] + "," + filter_expr
+    else:
+        cmd.extend(["-af", filter_expr])
 
 
 def scan_audio_files(directory: str, recursive: bool = False) -> list[str]:
