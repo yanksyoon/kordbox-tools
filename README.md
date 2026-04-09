@@ -109,8 +109,9 @@ python -m venv .venv
 source .venv/bin/activate        # macOS / Linux
 .venv\Scripts\activate           # Windows
 
-# 3. Install the package (with dev dependencies)
+# 3. Install the package (with dev and GUI dependencies)
 pip install -e ".[dev]"
+pip install -e ".[gui-test]"
 
 # 4. Verify installation
 python -m src.cli --help
