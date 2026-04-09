@@ -138,7 +138,7 @@ class TestNeedsConversion:
 
 
 class TestBuildFfmpegCmd:
-    @patch("src.converter.find_ffmpeg", return_value=Path("/usr/bin/ffmpeg"))
+    @patch("src.converter.find_ffmpeg", return_value="/usr/bin/ffmpeg")
     def test_wav_16bit(self, mock_ffmpeg):
         target = ConversionTarget(format="wav", sample_rate=44100, bit_depth=16)
         cmd = build_ffmpeg_cmd("/in.wav", "/out.wav", target)
@@ -147,21 +147,21 @@ class TestBuildFfmpegCmd:
         assert "pcm_s16le" in cmd
         assert "-y" in cmd
 
-    @patch("src.converter.find_ffmpeg", return_value=Path("/usr/bin/ffmpeg"))
+    @patch("src.converter.find_ffmpeg", return_value="/usr/bin/ffmpeg")
     def test_mp3_320k(self, mock_ffmpeg):
         target = ConversionTarget(format="mp3", bitrate="320k", sample_rate=44100)
         cmd = build_ffmpeg_cmd("/in.wav", "/out.mp3", target)
         assert "libmp3lame" in cmd
         assert "320k" in cmd
 
-    @patch("src.converter.find_ffmpeg", return_value=Path("/usr/bin/ffmpeg"))
+    @patch("src.converter.find_ffmpeg", return_value="/usr/bin/ffmpeg")
     def test_flac_24bit(self, mock_ffmpeg):
         target = ConversionTarget(format="flac", sample_rate=96000, bit_depth=24)
         cmd = build_ffmpeg_cmd("/in.wav", "/out.flac", target)
         assert "flac" in cmd
         assert "s24" in cmd
 
-    @patch("src.converter.find_ffmpeg", return_value=Path("/usr/bin/ffmpeg"))
+    @patch("src.converter.find_ffmpeg", return_value="/usr/bin/ffmpeg")
     def test_aiff(self, mock_ffmpeg):
         target = ConversionTarget(format="aiff", sample_rate=44100, bit_depth=16)
         cmd = build_ffmpeg_cmd("/in.wav", "/out.aiff", target)
@@ -193,7 +193,7 @@ class TestConvertFile:
     @patch("subprocess.Popen")
     def test_conversion_success(self, mock_popen, mock_find_ffmpeg, mock_meta):
         mock_meta.return_value = FAKE_MP3_META
-        mock_find_ffmpeg.return_value = Path("/usr/bin/ffmpeg")
+        mock_find_ffmpeg.return_value = "/usr/bin/ffmpeg"
 
         d = tempfile.mkdtemp()
         fake_file = _tmp_file("test.mp3", b"mp3 data", base=d)
