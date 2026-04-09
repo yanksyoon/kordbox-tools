@@ -2,19 +2,9 @@
 
 import pytest
 from pathlib import Path
-from PySide6.QtWidgets import QApplication
 from unittest.mock import patch, MagicMock
 
 from gui.tabs.check_tab import CheckTab, _CheckWorker
-
-
-@pytest.fixture
-def app():
-    """Create QApplication for testing."""
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    return app
 
 
 @pytest.fixture

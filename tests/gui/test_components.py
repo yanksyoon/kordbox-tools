@@ -1,20 +1,11 @@
 """Tests for GUI components."""
 
 import pytest
-from PySide6.QtWidgets import QApplication, QAbstractItemView
+from PySide6.QtWidgets import QAbstractItemView
 from PySide6.QtCore import Qt
 
 from gui.components import MultiModelSelector
 from src.config import CDJ_MODELS
-
-
-@pytest.fixture
-def app():
-    """Create QApplication for testing."""
-    app = QApplication.instance()
-    if app is None:
-        app = QApplication([])
-    return app
 
 
 @pytest.fixture
