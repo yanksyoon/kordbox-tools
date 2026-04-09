@@ -62,6 +62,18 @@ FAKE_MP3_META = AudioMetadata(
     file_size=7200000,
 )
 
+FAKE_AAC_META = AudioMetadata(
+    filepath="/tmp/test.aac",
+    format="aac",
+    codec="aac",
+    sample_rate=44100,
+    bit_depth=None,
+    bitrate=256000,
+    channels=2,
+    duration=180.0,
+    file_size=5760000,
+)
+
 
 class TestCheckCompatibility:
     def test_unknown_model(self):
@@ -98,6 +110,13 @@ class TestCheckCompatibility:
         result = check_compatibility(filepath, "cdj-3000", FAKE_MP3_META)
         assert any("320" in n for n in result.notes)
 
+    @patch("src.compatibility.extract_metadata")
+    def test_aac_bitrate_note(self, mock_meta):
+        mock_meta.return_value = FAKE_AAC_META
+        filepath = _tmp_file("test.aac", b"fake aac")
+        result = check_compatibility(filepath, "cdj-3000", FAKE_AAC_META)
+        assert any("256" in n for n in result.notes)
+
     def test_unsupported_format(self):
         filepath = _tmp_file("test.ogg", b"fake")
         result = check_compatibility(filepath, "cdj-400")
@@ -111,7 +130,7 @@ class TestCheckAllModels:
         mock_meta.return_value = FAKE_WAV_META
         filepath = _tmp_file("test.wav", b"fake wav")
         results = check_all_models(filepath, FAKE_WAV_META)
-        assert len(results) == 9  # 9 CDJ models
+        assert len(results) == 10  # 10 CDJ models
 
     @patch("src.compatibility.extract_metadata")
     def test_cdj3000_compatible_wav(self, mock_meta):

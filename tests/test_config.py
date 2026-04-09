@@ -16,7 +16,7 @@ class TestCDJModels:
         assert "flac" in CDJ_MODELS["cdj-3000"].formats
 
     def test_cdj3000_high_sample_rates(self):
-        assert 192000 in CDJ_MODELS["cdj-3000"].sample_rates
+        assert 96000 in CDJ_MODELS["cdj-3000"].sample_rates
 
     def test_cdj400_no_rekordbox(self):
         assert CDJ_MODELS["cdj-400"].rekordbox is False

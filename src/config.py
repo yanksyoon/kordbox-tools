@@ -16,17 +16,29 @@ class CDJModelSpecs:
     max_bitrate: int          # kbps for lossy formats
     rekordbox: bool
     usb: bool
+    usb_c: bool
     sd_card: bool
 
 
 CDJ_MODELS: Dict[str, CDJModelSpecs] = {
-    "cdj-3000": CDJModelSpecs(
+    "cdj-3000x": CDJModelSpecs(
         formats={"mp3", "aac", "wav", "aiff", "flac", "alac"},
-        sample_rates={44100, 48000, 88200, 96000, 176400, 192000},
+        sample_rates={44100, 48000, 88200, 96000},
         bit_depths={16, 24},
         max_bitrate=320,
         rekordbox=True,
         usb=True,
+        usb_c=True,
+        sd_card=False,
+    ),
+    "cdj-3000": CDJModelSpecs(
+        formats={"mp3", "aac", "wav", "aiff", "flac", "alac"},
+        sample_rates={44100, 48000, 88200, 96000},
+        bit_depths={16, 24},
+        max_bitrate=320,
+        rekordbox=True,
+        usb=True,
+        usb_c=False,
         sd_card=True,
     ),
     "cdj-2000nxs2": CDJModelSpecs(
@@ -36,6 +48,7 @@ CDJ_MODELS: Dict[str, CDJModelSpecs] = {
         max_bitrate=320,
         rekordbox=True,
         usb=True,
+        usb_c=False,
         sd_card=True,
     ),
     "cdj-2000nxs": CDJModelSpecs(
@@ -45,6 +58,7 @@ CDJ_MODELS: Dict[str, CDJModelSpecs] = {
         max_bitrate=320,
         rekordbox=True,
         usb=True,
+        usb_c=False,
         sd_card=True,
     ),
     "cdj-2000": CDJModelSpecs(
@@ -54,6 +68,7 @@ CDJ_MODELS: Dict[str, CDJModelSpecs] = {
         max_bitrate=320,
         rekordbox=True,
         usb=True,
+        usb_c=False,
         sd_card=True,
     ),
     "cdj-900nxs": CDJModelSpecs(
@@ -63,6 +78,7 @@ CDJ_MODELS: Dict[str, CDJModelSpecs] = {
         max_bitrate=320,
         rekordbox=True,
         usb=True,
+        usb_c=False,
         sd_card=False,
     ),
     "cdj-900": CDJModelSpecs(
@@ -72,6 +88,7 @@ CDJ_MODELS: Dict[str, CDJModelSpecs] = {
         max_bitrate=320,
         rekordbox=True,
         usb=True,
+        usb_c=False,
         sd_card=False,
     ),
     "cdj-850": CDJModelSpecs(
@@ -81,6 +98,7 @@ CDJ_MODELS: Dict[str, CDJModelSpecs] = {
         max_bitrate=320,
         rekordbox=True,
         usb=True,
+        usb_c=False,
         sd_card=False,
     ),
     "cdj-400": CDJModelSpecs(
@@ -90,6 +108,7 @@ CDJ_MODELS: Dict[str, CDJModelSpecs] = {
         max_bitrate=320,
         rekordbox=False,
         usb=True,
+        usb_c=False,
         sd_card=False,
     ),
     "cdj-350": CDJModelSpecs(
@@ -99,6 +118,7 @@ CDJ_MODELS: Dict[str, CDJModelSpecs] = {
         max_bitrate=320,
         rekordbox=True,
         usb=True,
+        usb_c=False,
         sd_card=False,
     ),
 }
