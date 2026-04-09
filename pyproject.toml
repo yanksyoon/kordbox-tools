@@ -20,7 +20,6 @@ dev = [
 gui-test = [
     "pytest-qt>=4.0",
     "PySide6>=6.6",
-    "pytest-xvfb>=3.0",
 ]
 
 [project.scripts]

@@ -53,6 +53,9 @@ class _ModelSelectionDialog(QDialog):
             item.setCheckState(Qt.Checked if key in current_selection else Qt.Unchecked)
             self.list_widget.addItem(item)
         
+        # Connect item click to toggle checkbox
+        self.list_widget.itemClicked.connect(self._on_item_clicked)
+        
         layout.addWidget(self.list_widget)
         
         # Buttons
@@ -66,6 +69,12 @@ class _ModelSelectionDialog(QDialog):
         layout.addWidget(button_box)
         
         self.resize(300, 400)
+    
+    def _on_item_clicked(self, item: QListWidgetItem) -> None:
+        """Toggle checkbox when item is clicked anywhere."""
+        current_state = item.checkState()
+        new_state = Qt.Unchecked if current_state == Qt.Checked else Qt.Checked
+        item.setCheckState(new_state)
     
     def _reset_selection(self):
         """Reset all checkboxes to checked."""
