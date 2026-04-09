@@ -143,6 +143,11 @@ class CheckTab(QWidget):
         self.table.setColumnCount(len(all_models) + 1)
         self.table.setHorizontalHeaderLabels(["File"] + all_models)
 
+        # Set column widths
+        self.table.setColumnWidth(0, 250)  # File column wider for filenames
+        for col in range(1, len(all_models) + 1):
+            self.table.setColumnWidth(col, 120)  # Model columns narrower but readable
+
         row = self.table.rowCount()
         self.table.insertRow(row)
         self.table.setItem(row, 0, QTableWidgetItem(Path(filepath).name))
