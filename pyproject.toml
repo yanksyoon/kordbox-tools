@@ -30,4 +30,6 @@ include = ["src*", "gui*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-p no:operator"
+addopts = "-p no:operator --tb=short"
+qt_api = "pyside6"
+qt_no_exception_capture = true

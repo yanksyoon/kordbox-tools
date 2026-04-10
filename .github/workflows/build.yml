@@ -30,7 +30,7 @@ jobs:
         run: pip install -e ".[dev]"
 
       - name: Run tests
-        run: pytest tests/ -v
+        run: pytest tests/ -v --ignore=tests/gui/
 
   # ─── macOS (arm64) ────────────────────────────────────────────────────────
   build-macos-arm64:

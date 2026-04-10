@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
 from src.compatibility import check_all_models, check_compatibility
 from src.config import CDJ_MODELS
 from src.utils import get_display_model_name
-from gui.components import FileListWidget, ModelSelector, LogViewer, ProgressWidget
+from gui.components import FileListWidget, MultiModelSelector, LogViewer, ProgressWidget
 
 
 class _CheckWorker(QThread):
@@ -29,18 +29,23 @@ class _CheckWorker(QThread):
     progress = Signal(int, int, str)
     finished = Signal()
 
-    def __init__(self, files: list[str], model_key: Optional[str]):
+    def __init__(self, files: list[str], model_keys: list[str]):
         super().__init__()
         self.files = files
-        self.model_key = model_key
+        self.model_keys = model_keys
 
     def run(self):
         for i, filepath in enumerate(self.files):
             self.progress.emit(i, len(self.files), Path(filepath).name)
-            if self.model_key:
-                result = check_compatibility(filepath, self.model_key)
-                self.file_done.emit(filepath, {result.model: _result_dict(result)})
+            if self.model_keys:
+                # Check only selected models
+                results = {}
+                for model_key in self.model_keys:
+                    result = check_compatibility(filepath, model_key)
+                    results[result.model] = _result_dict(result)
+                self.file_done.emit(filepath, results)
             else:
+                # Check all models
                 results = check_all_models(filepath)
                 self.file_done.emit(filepath, {
                     k: _result_dict(v) for k, v in results.items()
@@ -71,7 +76,7 @@ class CheckTab(QWidget):
 
         # Controls row
         controls = QHBoxLayout()
-        self.model_selector = ModelSelector(include_all=True)
+        self.model_selector = MultiModelSelector()
         controls.addWidget(self.model_selector)
 
         self.check_btn = QPushButton("▶ Check Compatibility")
@@ -105,13 +110,13 @@ class CheckTab(QWidget):
         if not files:
             return
 
-        model_key = self.model_selector.selected_key()
+        model_keys = self.model_selector.selected_keys()
         self._results.clear()
         self.table.clear()
         self.table.setRowCount(0)
         self.log.clear_log()
 
-        self._worker = _CheckWorker(files, model_key)
+        self._worker = _CheckWorker(files, model_keys)
         self._worker.progress.connect(self._on_progress)
         self._worker.file_done.connect(self._on_file_done)
         self._worker.finished.connect(self._on_finished)
@@ -137,6 +142,11 @@ class CheckTab(QWidget):
 
         self.table.setColumnCount(len(all_models) + 1)
         self.table.setHorizontalHeaderLabels(["File"] + all_models)
+
+        # Set column widths
+        self.table.setColumnWidth(0, 250)  # File column wider for filenames
+        for col in range(1, len(all_models) + 1):
+            self.table.setColumnWidth(col, 120)  # Model columns narrower but readable
 
         row = self.table.rowCount()
         self.table.insertRow(row)
